@@ -72,7 +72,7 @@ func streamKeys(stream protos.Worker_PredicateAndSchemaDataClient, groupId uint3
 	it := pstore.NewIterator(badger.DefaultIteratorOptions)
 	defer it.Close()
 
-	g := &protos.GroupKeys{
+	groupKeys := &protos.GroupKeys{
 		GroupId: groupId,
 	}
 
@@ -92,7 +92,7 @@ func streamKeys(stream protos.Worker_PredicateAndSchemaDataClient, groupId uint3
 			// Do not go next.
 			continue
 		}
-		if group.BelongsTo(pk.Attr) != g.GroupId {
+		if group.BelongsTo(pk.Attr) != groupKeys.GroupId {
 			it.Seek(pk.SkipPredicate())
 			// Do not go next.
 			continue
@@ -107,16 +107,16 @@ func streamKeys(stream protos.Worker_PredicateAndSchemaDataClient, groupId uint3
 			Key:      kdup,
 			Checksum: pl.Checksum,
 		}
-		g.Keys = append(g.Keys, key)
-		if len(g.Keys) >= 1000 {
-			if err := stream.Send(g); err != nil {
+		groupKeys.Keys = append(groupKeys.Keys, key)
+		if len(groupKeys.Keys) >= 1000 {
+			if err := stream.Send(groupKeys); err != nil {
 				return x.Wrapf(err, "While sending group keys to server.")
 			}
-			g.Keys = g.Keys[:0]
+			groupKeys.Keys = groupKeys.Keys[:0]
 		}
 		it.Next()
 	}
-	if err := stream.Send(g); err != nil {
+	if err := stream.Send(groupKeys); err != nil {
 		return x.Wrapf(err, "While sending group keys to server.")
 	}
 	return stream.CloseSend()
